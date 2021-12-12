@@ -14,10 +14,10 @@ fn main() {
 
         println!("valid lines: {}", depths.len());
 
-        let count = depths.iter().tuple_windows::<(_, _)>().fold(0, |acc, (a, b)| {
-            let increased = b > a;
-            println!("{} {} ({})", a, b, if increased { "increased" } else { "n/a" });
-            return if increased { acc + 1 } else { acc };
+        let sums: Vec<_> = depths.iter().tuple_windows::<(_, _, _)>().map(|(a, b, c)| a+b+c).collect();
+
+        let count = sums.iter().tuple_windows::<(_, _)>().fold(0, |acc, (a, b)| {
+            if b > a { acc + 1 } else { acc }
         });
 
         println!("{}", count);
