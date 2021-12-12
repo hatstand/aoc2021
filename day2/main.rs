@@ -18,14 +18,14 @@ fn main() {
 
         println!("{} instructions", instructions.len());
 
-        let loc = instructions.iter().fold((0, 0), |(horizontal, depth), (instruction, amount)| {
+        let loc = instructions.iter().fold((0, 0, 0), |(horizontal, depth, aim), (instruction, amount)| {
             println!("processing: {:?}", (instruction, amount));
 
             match instruction.as_str() {
-                "forward" => (horizontal + amount, depth),
-                "down" => (horizontal, depth + amount),
-                "up" => (horizontal, depth - amount),
-                _ => (horizontal, depth),
+                "forward" => (horizontal + amount, depth + aim*amount, aim),
+                "down" => (horizontal, depth, aim + amount),
+                "up" => (horizontal, depth, aim - amount),
+                _ => (horizontal, depth, aim),
             }
         });
 
