@@ -10,10 +10,27 @@ fn main() {
         // Find the median and then move all crabs towards it?
         crabs.sort();
         println!("{:?}", crabs);
-        let median = crabs[crabs.len() / 2];
-        println!("Aligning to {}", median);
+        // let median = crabs[crabs.len() / 2];
+        // println!("Aligning to {}", median);
 
-        let res: i32 = crabs.iter().map(|x| (x - median).abs()).sum();
+        // Lol brute force?
+        let min = *crabs.iter().min().unwrap();
+        let max = *crabs.iter().max().unwrap();
+
+        let v: Vec<_> = (min..max)
+            .map(|cand| {
+                crabs.iter().fold(0, |acc, x| {
+                    // Triangular sequence. (n * (n + 1)) / 2
+                    let dist = (x - cand).abs();
+                    let cost = (dist * (dist + 1)) / 2;
+                    cost + acc
+                })
+            })
+            .collect();
+
+        let res = v.iter().min().unwrap();
+
+        // let res: i32 = crabs.iter().map(|x| (x - median).abs()).sum();
         println!("{}", res);
     }
 }
