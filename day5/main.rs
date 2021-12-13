@@ -49,6 +49,27 @@ fn main() {
                 for x in start..=end {
                     *grid.get_mut(y1 as usize, x as usize).unwrap() += 1;
                 }
+            } else {
+                let start_coord = *vec![(x1, y1), (x2, y2)]
+                    .iter()
+                    .min_by(|(x1, _y1), (x2, _y2)| x1.cmp(x2))
+                    .unwrap();
+
+                let end_coord = if x1 == start_coord.0 {
+                    (x2, y2)
+                } else {
+                    (x1, y1)
+                };
+
+                let y_increment = if start_coord.1 < end_coord.1 { 1 } else { -1 } as i64;
+
+                (start_coord.0..=end_coord.0)
+                    .enumerate()
+                    .for_each(|(i, x)| {
+                        let delta_y = i as i64 * y_increment;
+                        let next_y: u64 = (start_coord.1 as i64 + delta_y) as u64;
+                        *grid.get_mut(next_y as usize, x as usize).unwrap() += 1;
+                    })
             }
         }
 
