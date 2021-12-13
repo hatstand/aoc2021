@@ -1,6 +1,7 @@
 use grid::Grid;
 use regex::Regex;
 use std::cmp::max;
+use std::cmp::min;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -8,7 +9,7 @@ use std::path::Path;
 fn main() {
     let re = Regex::new(r"(\d+),(\d+) -> (\d+),(\d+)").unwrap();
 
-    if let Ok(lines) = read_lines("./day5/example.txt") {
+    if let Ok(lines) = read_lines("./day5/input.txt") {
         let ls: Vec<String> = lines.filter_map(|line| line.ok()).collect();
 
         let coords: Vec<_> = ls
@@ -37,17 +38,24 @@ fn main() {
         for ((x1, y1), (x2, y2)) in coords {
             // Only horizontal & vertical for now.
             if x1 == x2 {
-                for y in y1..=y2 {
+                let start = min(y1, y2);
+                let end = max(y1, y2);
+                for y in start..=end {
                     *grid.get_mut(y as usize, x1 as usize).unwrap() += 1;
                 }
             } else if y1 == y2 {
-                for x in x1..=x2 {
+                let start = min(x1, x2);
+                let end = max(x1, x2);
+                for x in start..=end {
                     *grid.get_mut(y1 as usize, x as usize).unwrap() += 1;
                 }
             }
         }
 
         print_grid(&grid);
+
+        let scary = grid.iter().filter(|c| *c > &1).count();
+        println!("{}", scary);
     }
 }
 
