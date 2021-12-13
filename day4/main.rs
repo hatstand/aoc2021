@@ -1,5 +1,6 @@
 use grid::Grid;
 use itertools::Itertools;
+use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
@@ -42,15 +43,25 @@ fn main() {
             })
             .collect();
 
+        let mut previous_winners: BTreeSet<usize> = BTreeSet::new();
+
         for i in 0..drawing.len() {
             let so_far = drawing[0..i].to_vec();
-            let winners: Vec<_> = grids.iter().filter(|g| is_winner(&g, &so_far)).collect();
-            if !winners.is_empty() {
-                println!("Winner: {:?}", winners);
-                println!("drawn to: {:?}", so_far);
+            let winners: BTreeSet<usize> = grids
+                .iter()
+                .enumerate()
+                .filter(|(_i, g)| is_winner(&g, &so_far))
+                .map(|(i, _g)| i)
+                .collect();
+            let new_winners: BTreeSet<usize> =
+                winners.difference(&previous_winners).map(|i| *i).collect();
 
-                let winner = winners.first().unwrap();
-                let sum: u32 = winner.iter().filter(|c| !so_far.contains(c)).sum();
+            if previous_winners.union(&new_winners).count() == grids.len() {
+                // This is the final winner!
+                let last = grids.get(*new_winners.iter().next().unwrap()).unwrap();
+                println!("last grid: {:?}", last);
+
+                let sum: u32 = last.iter().filter(|c| !so_far.contains(c)).sum();
                 let last_draw = so_far.last().unwrap();
                 println!(
                     "sum: {} last_draw: {} score: {}",
@@ -60,6 +71,10 @@ fn main() {
                 );
                 return;
             }
+
+            new_winners.iter().for_each(|i| {
+                previous_winners.insert(*i);
+            });
         }
     }
 }
@@ -68,7 +83,6 @@ fn is_winner(grid: &Grid<u32>, drawing: &Vec<u32>) -> bool {
     // Rows
     for i in 0..grid.rows() {
         if grid.iter_row(i).all(|cell| drawing.contains(&cell)) {
-            println!("Row winner: {:?}", grid.iter_row(i));
             return true;
         }
     }
@@ -76,28 +90,9 @@ fn is_winner(grid: &Grid<u32>, drawing: &Vec<u32>) -> bool {
     // Columns
     for i in 0..grid.cols() {
         if grid.iter_col(i).all(|cell| drawing.contains(&cell)) {
-            println!("Col winner: {:?}", grid.iter_col(i));
             return true;
         }
     }
-
-    // // Diagonal 1
-    // if (0..grid.rows())
-    //     .map(|j| grid.get(j, j).unwrap())
-    //     .all(|cell| drawing.contains(&cell))
-    // {
-    //     println!("Diagonal 1 winner");
-    //     return true;
-    // }
-
-    // // Diagonal 2
-    // if (0..grid.rows())
-    //     .map(|j| grid.get(j, grid.rows() - j - 1).unwrap())
-    //     .all(|cell| drawing.contains(&cell))
-    // {
-    //     println!("Diagonal 2 winner");
-    //     return true;
-    // }
 
     false
 }
