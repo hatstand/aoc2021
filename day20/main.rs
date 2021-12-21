@@ -39,7 +39,7 @@ fn main() {
         print_img(&img);
         println!("");
 
-        let enhanced = enhance_img(&img, &algo_chars);
+        let enhanced = enhance_img(&img, &algo_chars, false);
         println!(
             "enhance x1 {}x{}",
             enhanced.num_columns(),
@@ -48,7 +48,7 @@ fn main() {
         print_img(&enhanced);
         println!("");
 
-        let enhanced_2 = enhance_img(&enhanced, &algo_chars);
+        let enhanced_2 = enhance_img(&enhanced, &algo_chars, true);
         println!(
             "enhance x2 {}x{}",
             enhanced_2.num_columns(),
@@ -64,13 +64,14 @@ fn main() {
     }
 }
 
-fn enhance_img(img: &Array2D<char>, algo_chars: &Vec<char>) -> Array2D<char> {
+fn enhance_img(img: &Array2D<char>, algo_chars: &Vec<char>, default: bool) -> Array2D<char> {
     assert_eq!(img.num_columns(), img.num_rows());
     let get_pixel = |x: i32, y: i32| -> bool {
         if x < 0 || y < 0 {
-            false
+            default
         } else {
-            img.get(y as usize, x as usize).map_or(false, |c| *c == '#')
+            img.get(y as usize, x as usize)
+                .map_or(default, |c| *c == '#')
         }
     };
     let parse_pixels = |x: i32, y: i32| -> u16 {
