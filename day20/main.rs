@@ -39,7 +39,15 @@ fn main() {
         print_img(&img);
         println!("");
 
-        let enhanced = enhance_img(&img, &algo_chars, false);
+        let default_for_index = |i: usize| -> bool {
+            if algo_chars[0] == '.' {
+                false
+            } else {
+                i % 2 != 0
+            }
+        };
+
+        let enhanced = enhance_img(&img, &algo_chars, default_for_index(0));
         println!(
             "enhance x1 {}x{}",
             enhanced.num_columns(),
@@ -48,7 +56,7 @@ fn main() {
         print_img(&enhanced);
         println!("");
 
-        let enhanced_2 = enhance_img(&enhanced, &algo_chars, true);
+        let enhanced_2 = enhance_img(&enhanced, &algo_chars, default_for_index(1));
         println!(
             "enhance x2 {}x{}",
             enhanced_2.num_columns(),
