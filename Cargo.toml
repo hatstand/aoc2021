@@ -43,7 +43,6 @@ path = "day21/main.rs"
 
 [dependencies]
 array2d = "0.2.1"
-ascii = "1.0.0"
 grid = "0.6.0"
 itertools = "0.10.3"
 regex = "1.5.4"

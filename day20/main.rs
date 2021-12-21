@@ -1,14 +1,10 @@
 use array2d::Array2D;
-use ascii::*;
-use regex::Regex;
 use std::fs::File;
 use std::io::{self, BufRead};
 use std::path::Path;
 
 fn main() {
-    let re = Regex::new(r"\d+$").unwrap();
-
-    if let Ok(lines) = read_lines("./day20/example.txt") {
+    if let Ok(lines) = read_lines("./day20/input.txt") {
         let ls: Vec<_> = lines.filter_map(|l| l.ok()).collect();
         let algo_chars: Vec<char> = ls
             .iter()
@@ -39,18 +35,32 @@ fn main() {
         let image_chars: Vec<char> = image_lines.iter().rev().flatten().map(|c| *c).collect();
         let s = (image_chars.len() as f64).sqrt().floor() as usize;
         let img = Array2D::from_row_major(&image_chars, s, s);
-        println!("original");
+        println!("original {}x{}", img.num_columns(), img.num_rows());
         print_img(&img);
         println!("");
 
         let enhanced = enhance_img(&img, &algo_chars);
-        println!("enhance x1");
+        println!(
+            "enhance x1 {}x{}",
+            enhanced.num_columns(),
+            enhanced.num_rows()
+        );
         print_img(&enhanced);
         println!("");
 
         let enhanced_2 = enhance_img(&enhanced, &algo_chars);
-        println!("enhance x2");
+        println!(
+            "enhance x2 {}x{}",
+            enhanced_2.num_columns(),
+            enhanced_2.num_rows()
+        );
         print_img(&enhanced_2);
+
+        let light_pixels = enhanced_2
+            .elements_row_major_iter()
+            .filter(|&c| *c == '#')
+            .count();
+        println!("light pixels: {}", light_pixels);
     }
 }
 
@@ -71,16 +81,17 @@ fn enhance_img(img: &Array2D<char>, algo_chars: &Vec<char>) -> Array2D<char> {
             for i in x - 1..=x + 1 {
                 let n = get_pixel(i, j);
                 index -= 1;
-                out = out | (n as u16) << index;
+                out |= (n as u16) << index;
             }
         }
+        assert_eq!(index, 0);
         out
     };
 
     let mut out_img = Array2D::filled_with('.', img.num_rows() + 2, img.num_columns() + 2);
 
-    for j in -1..((img.num_columns() + 1) as i32) {
-        for i in -1..((img.num_rows() + 1) as i32) {
+    for j in -1..((img.num_rows() + 1) as i32) {
+        for i in -1..((img.num_columns() + 1) as i32) {
             let p = parse_pixels(i, j);
             assert!((p as usize) < algo_chars.len());
 
