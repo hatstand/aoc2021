@@ -47,28 +47,25 @@ fn main() {
             }
         };
 
-        let enhanced = enhance_img(&img, &algo_chars, default_for_index(0));
-        println!(
-            "enhance x1 {}x{}",
-            enhanced.num_columns(),
-            enhanced.num_rows()
-        );
-        print_img(&enhanced);
-        println!("");
+        (0..50).fold(img, |acc, i| {
+            let enhanced = enhance_img(&acc, &algo_chars, default_for_index(i));
+            println!(
+                "enhance x{} {}x{}",
+                i,
+                enhanced.num_columns(),
+                enhanced.num_rows()
+            );
+            print_img(&enhanced);
+            println!("");
+            let light_pixels = enhanced
+                .elements_row_major_iter()
+                .filter(|&c| *c == '#')
+                .count();
+            println!("light pixels: {}", light_pixels);
+            // next = &enhanced;
 
-        let enhanced_2 = enhance_img(&enhanced, &algo_chars, default_for_index(1));
-        println!(
-            "enhance x2 {}x{}",
-            enhanced_2.num_columns(),
-            enhanced_2.num_rows()
-        );
-        print_img(&enhanced_2);
-
-        let light_pixels = enhanced_2
-            .elements_row_major_iter()
-            .filter(|&c| *c == '#')
-            .count();
-        println!("light pixels: {}", light_pixels);
+            enhanced
+        });
     }
 }
 
@@ -105,7 +102,7 @@ fn enhance_img(img: &Array2D<char>, algo_chars: &Vec<char>, default: bool) -> Ar
             assert!((p as usize) < algo_chars.len());
 
             let out_c = algo_chars[p as usize];
-            println!("({},{}) -> {:09b} ({}) -> {}", i, j, p, p, out_c);
+            // println!("({},{}) -> {:09b} ({}) -> {}", i, j, p, p, out_c);
 
             out_img
                 .set((j + 1) as usize, (i + 1) as usize, out_c)
