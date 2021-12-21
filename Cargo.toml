@@ -32,12 +32,18 @@ name = "day7"
 path = "day7/main.rs"
 
 [[bin]]
+name = "day20"
+path = "day20/main.rs"
+
+[[bin]]
 name = "day21"
 path = "day21/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+array2d = "0.2.1"
+ascii = "1.0.0"
 grid = "0.6.0"
 itertools = "0.10.3"
 regex = "1.5.4"
