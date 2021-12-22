@@ -6,7 +6,7 @@ use nom::bits::{bits, streaming::tag, streaming::take};
 use nom::branch::alt;
 use nom::combinator::map;
 use nom::error::Error;
-use nom::multi::many_m_n;
+use nom::multi::{length_count, many_m_n};
 use nom::sequence::tuple;
 use nom::IResult;
 
@@ -21,7 +21,7 @@ struct Operator {
     version: u8,
     id: u8,
     length_type: u8,
-    num_subpackets: u16,
+    subpackets: Vec<Packet>,
 }
 
 #[derive(Debug)]
@@ -67,37 +67,58 @@ fn literal(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
     )(input)
 }
 
+fn num_subpackets(input: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
+    // take(8usize)(input)
+
+    map(
+        tuple((take(8usize), take(3usize))),
+        |(msb, lsb): (u8, u8)| lsb | (msb << 3),
+    )(input)
+}
+
+fn hmm(input: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
+    take(3usize)(input)
+}
+
+fn subpacket(input: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
+    take(11usize)(input)
+}
+
 fn operator(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
     let operator_id = take(3usize);
     let length_type = take(1usize);
-    let num_subpackets = take(11usize);
+    let subpackets = length_count(num_subpackets, packet);
     map(
-        tuple((version, operator_id, length_type, num_subpackets)),
-        |(version, id, length_type, num_subpackets)| -> Packet {
+        tuple((version, operator_id, length_type, subpackets)),
+        |(version, id, length_type, subpackets)| -> Packet {
             Packet::Operator(Operator {
                 id: id,
                 version: version,
                 length_type: length_type,
-                num_subpackets: num_subpackets,
+                subpackets: subpackets,
             })
         },
     )(input)
 }
 
-fn parse_packet(input: &[u8]) -> IResult<&[u8], Packet> {
-    let packet = alt((literal, operator));
+fn packet(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
+    alt((literal, operator))(input)
+}
 
-    // let packet = tuple((version, packet_contents));
-
+fn parse(input: &[u8]) -> IResult<&[u8], Packet> {
     bits::<_, _, Error<(&[u8], usize)>, _, _>(packet)(input)
 }
+
+// type InputType = (&[u8], usize);
 
 fn main() {
     if let Ok(lines) = read_lines("./day16/example.txt") {
         // let input = &[0xd2, 0xfe, 0x28];
         let input = &[0xEE, 0x00, 0xD4, 0x0C, 0x82, 0x30, 0x60];
-        let (_, packet) = parse_packet(input).unwrap();
+        let (left, packet) = parse(input).unwrap();
+        // let (_, packet) = parse_packet(input).unwrap();
         println!("{:?}", packet);
+        println!("{:?}", left);
     }
 }
 
