@@ -32,6 +32,10 @@ name = "day7"
 path = "day7/main.rs"
 
 [[bin]]
+name = "day16"
+path = "day16/main.rs"
+
+[[bin]]
 name = "day20"
 path = "day20/main.rs"
 
@@ -45,4 +49,5 @@ path = "day21/main.rs"
 array2d = "0.2.1"
 grid = "0.6.0"
 itertools = "0.10.3"
+nom = "7.1.0"
 regex = "1.5.4"
