@@ -6,14 +6,14 @@ use nom::bits::{bits, streaming::tag, streaming::take};
 use nom::branch::alt;
 use nom::combinator::{map, rest_len};
 use nom::error::Error;
-use nom::multi::{length_count, length_data, many1, many_m_n};
+use nom::multi::{length_count, length_data, many0, many_m_n};
 use nom::sequence::tuple;
 use nom::IResult;
 
 #[derive(Debug)]
 struct Literal {
     version: u8,
-    value: i32,
+    value: u64,
 }
 
 #[derive(Debug)]
@@ -38,12 +38,12 @@ fn literal_id(input: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
     tag(0x04, 3usize)(input)
 }
 
-fn integer(input: (&[u8], usize)) -> IResult<(&[u8], usize), i32> {
+fn integer(input: (&[u8], usize)) -> IResult<(&[u8], usize), u64> {
     let byte_with_next = map(tuple((tag(0x01, 1usize), take(4usize))), |(_, x)| x);
     let terminal_byte = map(tuple((tag(0x00, 1usize), take(4usize))), |(_, b)| b);
     map(
-        tuple((many_m_n(0, 3, byte_with_next), terminal_byte)),
-        |(parts, terminator): (Vec<i32>, _)| {
+        tuple((many0(byte_with_next), terminal_byte)),
+        |(parts, terminator): (Vec<u64>, _)| {
             let mut out = terminator;
             parts
                 .iter()
@@ -59,10 +59,12 @@ fn literal(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
     map(
         tuple((version, literal_id, integer)),
         |(version, _, value)| -> Packet {
-            Packet::Literal(Literal {
+            let p = Packet::Literal(Literal {
                 version: version,
                 value: value,
-            })
+            });
+            println!("{:?}", p);
+            p
         },
     )(input)
 }
@@ -74,62 +76,19 @@ fn num_subpackets(input: (&[u8], usize)) -> IResult<(&[u8], usize), u16> {
 fn length_data_packets(
 ) -> impl FnMut((&[u8], usize)) -> IResult<(&[u8], usize), Vec<Packet>, Error<(&[u8], usize)>> {
     move |input: (&[u8], usize)| -> IResult<(&[u8], usize), Vec<Packet>, Error<(&[u8], usize)>> {
-        // // Read how many bits we should read.
-        // let (our_input, bits): (_, usize) = take(15usize)(input)?;
-
-        // let (_, total_remaining) = rest_len(our_input)?;
-
-        // println!("need this many bits: {:?}", bits);
-        // // println!(
-        // //     "current input: {:?} remaining: {}",
-        // //     our_input, total_remaining
-        // // );
-
-        // let mut out = vec![];
-        // let mut rest = our_input;
-        // loop {
-        //     let (new_rest, packet) = packet(rest)?;
-        //     let (_, last_len) = rest_len(rest)?;
-        //     let (_, new_len) = rest_len(new_rest)?;
-        //     println!(
-        //         "{}: consumed packet of length: {}",
-        //         bits,
-        //         last_len - new_len
-        //     );
-        //     rest = new_rest;
-
-        //     let (_, remaining) = rest_len(rest)?;
-        //     out.push(packet);
-        //     // println!(
-        //     //     "consumed until: {:?} / remaining {:?} of {}",
-        //     //     rest, remaining, total_remaining
-        //     // );
-
-        //     let consumed_bits_so_far = total_remaining - remaining;
-
-        //     if consumed_bits_so_far == bits {
-        //         break;
-        //     }
-        //     println!(
-        //         "{} bits remaining to consume... consuming another packet!",
-        //         bits - consumed_bits_so_far
-        //     );
-        // }
-        // println!("{}: fulfilled packets for {} bits", bits, bits);
-
-        // let (_, remaining_bits) = rest_len(rest)?;
-        // println!("remaining bits: {}", remaining_bits);
-
         let (mut rest, num_bits) = take(15usize)(input)?;
         let (_, starting_bits) = rest_len(rest)?;
+        println!("{} <-> {}", num_bits, starting_bits);
         assert!(num_bits <= starting_bits);
         let mut bits_consumed = 0;
         let mut out = vec![];
         while bits_consumed != num_bits {
+            println!("consuming a packet from:\n{:?}", rest);
             let (new_rest, packet_data) = packet(rest)?;
             bits_consumed = starting_bits - rest_len(new_rest)?.1;
             println!("consumed {} of {} bits", bits_consumed, num_bits);
             rest = new_rest;
+            println!("rest:\n{:?}", rest);
             out.push(packet_data);
         }
 
@@ -139,25 +98,18 @@ fn length_data_packets(
 
 fn operator(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
     let operator_id = take(3usize);
-    let subpackets_0 = map(
-        tuple((tag(0x00, 1usize), length_data_packets())),
-        |(_, x)| x,
-    );
-
-    let subpackets_1 = map(
-        tuple((tag(0x01, 1usize), length_count(num_subpackets, packet))),
-        |(_, x)| x,
-    );
+    let subpackets_0 = tuple((tag(0x00, 1usize), length_data_packets()));
+    let subpackets_1 = tuple((tag(0x01, 1usize), length_count(num_subpackets, packet)));
 
     let subpackets = alt((subpackets_0, subpackets_1));
 
     map(
         tuple((version, operator_id, subpackets)),
-        |(version, id, subpackets)| -> Packet {
+        |(version, id, (length_type, subpackets))| -> Packet {
             let p = Packet::Operator(Operator {
                 id: id,
                 version: version,
-                length_type: 1,
+                length_type: length_type,
                 subpackets: subpackets,
             });
             println!("{:?}", p);
