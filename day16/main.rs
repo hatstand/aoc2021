@@ -19,7 +19,7 @@ struct Literal {
 #[derive(Debug)]
 struct Operator {
     version: u8,
-    id: u8,
+    operator: OperatorType,
     length_type: u8,
     subpackets: Vec<Packet>,
 }
@@ -28,6 +28,17 @@ struct Operator {
 enum Packet {
     Literal(Literal),
     Operator(Operator),
+}
+
+#[derive(Debug)]
+enum OperatorType {
+    Sum,
+    Product,
+    Minimum,
+    Maximum,
+    GreaterThan,
+    LessThan,
+    EqualTo,
 }
 
 fn version(input: (&[u8], usize)) -> IResult<(&[u8], usize), u8> {
@@ -63,7 +74,6 @@ fn literal(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
                 version: version,
                 value: value,
             });
-            println!("{:?}", p);
             p
         },
     )(input)
@@ -78,17 +88,13 @@ fn length_data_packets(
     move |input: (&[u8], usize)| -> IResult<(&[u8], usize), Vec<Packet>, Error<(&[u8], usize)>> {
         let (mut rest, num_bits) = take(15usize)(input)?;
         let (_, starting_bits) = rest_len(rest)?;
-        println!("{} <-> {}", num_bits, starting_bits);
         assert!(num_bits <= starting_bits);
         let mut bits_consumed = 0;
         let mut out = vec![];
         while bits_consumed != num_bits {
-            println!("consuming a packet from:\n{:?}", rest);
             let (new_rest, packet_data) = packet(rest)?;
             bits_consumed = starting_bits - rest_len(new_rest)?.1;
-            println!("consumed {} of {} bits", bits_consumed, num_bits);
             rest = new_rest;
-            println!("rest:\n{:?}", rest);
             out.push(packet_data);
         }
 
@@ -97,7 +103,28 @@ fn length_data_packets(
 }
 
 fn operator(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
-    let operator_id = take(3usize);
+    let operator_id = map(
+        alt((
+            tag(0x00, 3usize),
+            tag(0x01, 3usize),
+            tag(0x02, 3usize),
+            tag(0x03, 3usize),
+            // 0x04 is a literal.
+            tag(0x05, 3usize),
+            tag(0x06, 3usize),
+            tag(0x07, 3usize),
+        )),
+        |x| match x {
+            0x00 => OperatorType::Sum,
+            0x01 => OperatorType::Product,
+            0x02 => OperatorType::Minimum,
+            0x03 => OperatorType::Maximum,
+            0x05 => OperatorType::GreaterThan,
+            0x06 => OperatorType::LessThan,
+            0x07 => OperatorType::EqualTo,
+            _ => unreachable!(),
+        },
+    );
     let subpackets_0 = tuple((tag(0x00, 1usize), length_data_packets()));
     let subpackets_1 = tuple((tag(0x01, 1usize), length_count(num_subpackets, packet)));
 
@@ -105,14 +132,13 @@ fn operator(input: (&[u8], usize)) -> IResult<(&[u8], usize), Packet> {
 
     map(
         tuple((version, operator_id, subpackets)),
-        |(version, id, (length_type, subpackets))| -> Packet {
+        |(version, operator, (length_type, subpackets))| -> Packet {
             let p = Packet::Operator(Operator {
-                id: id,
+                operator: operator,
                 version: version,
                 length_type: length_type,
                 subpackets: subpackets,
             });
-            println!("{:?}", p);
 
             p
         },
@@ -139,6 +165,58 @@ fn sum_packet(p: &Packet) -> i32 {
     }
 }
 
+fn calculate_packet(p: &Packet) -> i64 {
+    match p {
+        Packet::Literal(lit) => lit.value as i64,
+        Packet::Operator(op) => match op.operator {
+            OperatorType::Sum => op
+                .subpackets
+                .iter()
+                .fold(0, |acc, x| acc + calculate_packet(x)),
+            OperatorType::Product => op
+                .subpackets
+                .iter()
+                .fold(1, |acc, x| acc * calculate_packet(x)),
+            OperatorType::Minimum => op
+                .subpackets
+                .iter()
+                .map(|x| calculate_packet(x))
+                .min()
+                .unwrap(),
+            OperatorType::Maximum => op
+                .subpackets
+                .iter()
+                .map(|x| calculate_packet(x))
+                .max()
+                .unwrap(),
+            OperatorType::GreaterThan => {
+                assert_eq!(op.subpackets.len(), 2);
+                if calculate_packet(&op.subpackets[0]) > calculate_packet(&op.subpackets[1]) {
+                    1
+                } else {
+                    0
+                }
+            }
+            OperatorType::LessThan => {
+                assert_eq!(op.subpackets.len(), 2);
+                if calculate_packet(&op.subpackets[0]) < calculate_packet(&op.subpackets[1]) {
+                    1
+                } else {
+                    0
+                }
+            }
+            OperatorType::EqualTo => {
+                assert_eq!(op.subpackets.len(), 2);
+                if calculate_packet(&op.subpackets[0]) == calculate_packet(&op.subpackets[1]) {
+                    1
+                } else {
+                    0
+                }
+            }
+        },
+    }
+}
+
 fn main() {
     if let Ok(lines) = read_lines("./day16/example.txt") {
         // let input = &[0xd2, 0xfe, 0x28];
@@ -153,6 +231,16 @@ fn main() {
         // let input = &[
         //     0xA0, 0x01, 0x6C, 0x88, 0x01, 0x62, 0x01, 0x7C, 0x36, 0x86, 0xB1, 0x8A, 0x3D, 0x47,
         //     0x80,
+        // ];
+        // let input = &[0xC2, 0x00, 0xB4, 0x0A, 0x82];
+        // let input = &[0x04, 0x00, 0x5A, 0xC3, 0x38, 0x90];
+        // let input = &[0x88, 0x00, 0x86, 0xC3, 0xE8, 0x81, 0x12];
+        // let input = &[0xCE, 0x00, 0xC4, 0x3D, 0x88, 0x11, 0x20];
+        // let input = &[0xD8, 0x00, 0x5A, 0xC2, 0xA8, 0xF0];
+        // let input = &[0xF6, 0x00, 0xBC, 0x2D, 0x8F];
+        // let input = &[0x9C, 0x00, 0x5A, 0xC2, 0xF8, 0xF0];
+        // let input = &[
+        //     0x9C, 0x01, 0x41, 0x08, 0x02, 0x50, 0x32, 0x0F, 0x18, 0x02, 0x10, 0x4A, 0x08,
         // ];
         let input = &[
             0x40, 0x54, 0x46, 0x08, 0x02, 0x53, 0x2B, 0x12, 0xFE, 0xE8, 0xB1, 0x80, 0x21, 0x3B,
@@ -211,6 +299,7 @@ fn main() {
         println!("{:?}", left);
 
         println!("{:?}", sum_packet(&packet));
+        println!("{:?}", calculate_packet(&packet));
     }
 }
 
