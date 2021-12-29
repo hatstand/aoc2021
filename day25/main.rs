@@ -4,13 +4,13 @@ use std::path::Path;
 use wrapping_coords2d::WrappingCoords2d;
 
 fn main() {
-    if let Ok(lines) = read_lines("./day25/example.txt") {
+    if let Ok(lines) = read_lines("./day25/input.txt") {
         let input: Vec<char> = lines.map(|l| l.unwrap().chars().collect())
             .fold(vec![], |mut acc, cs: Vec<char>| {
                 cs.iter().for_each(|c| acc.push(*c));
                 acc
             });
-        let width: usize = 10;
+        let width: usize = 139;
 
         print(&input, width);
         println!();
@@ -19,9 +19,9 @@ fn main() {
         let mut last = input;
         loop {
             let next = iteration(&last, width);
-            println!("Iteration: {}", count);
-            print(&next, width);
-            println!();
+            // println!("Iteration: {}", count);
+            // print(&next, width);
+            // println!();
 
             if eq(&next, &last) {
                 break;
