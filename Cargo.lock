@@ -20,6 +20,7 @@ dependencies = [
  "itertools",
  "nom",
  "regex",
+ "wrapping_coords2d",
 ]
 
 [[package]]
@@ -103,3 +104,9 @@ name = "version_check"
 version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5fecdca9a5291cc2b8dcf7dc02453fee791a280f3743cb0905f8822ae463b3fe"
+
+[[package]]
+name = "wrapping_coords2d"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ed8f505deeed45e186ae50abc7b5773f96d55326c81aa4ac8455364fe44da2b"
